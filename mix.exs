@@ -20,7 +20,12 @@ defmodule Inventory.Mixfile do
   def application do
     [
       mod: {Inventory.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [
+        :logger,
+        :runtime_tools,
+        :httpotion,
+        :timex
+      ]
     ]
   end
 
@@ -40,7 +45,15 @@ defmodule Inventory.Mixfile do
       {:phoenix_html, "~> 2.10"},
       {:phoenix_live_reload, "~> 1.0", only: :dev},
       {:gettext, "~> 0.11"},
-      {:cowboy, "~> 1.0"}
+      {:cowboy, "~> 1.0"},
+      {:httpotion, "~> 3.1.0"},
+      {:credo, "~> 0.10.0"},
+      {:poison, "~> 3.1"},
+      {:quantum, "~> 2.2"},
+      {:timex, "~> 3.0"},
+      {:ex_doc, "~> 0.19", only: :dev, runtime: false},
+      {:exvcr, "~> 0.10.2", only: :test}
+
     ]
   end
 
