@@ -11,6 +11,19 @@ defmodule Inventory.PriceTracker do
 
   @time_format "{ISO:Extended}"
 
+
+  @doc"""
+    performs the actual work of pulling down objects and udpating our database with the infornation
+  """
+  def update_products(url, api_key, start_date, end_date) do
+    case fetch_records(url, api_key, start_date, end_date) do
+      {:error, msg} ->
+        Logger.error msg
+      products when is_list(products) ->
+        merge_record_changes(products)
+    end
+  end
+
   @doc """
   fetches the records and returns a list of responses
   url: the url to be called
@@ -93,6 +106,12 @@ defmodule Inventory.PriceTracker do
       |> Timex.format(@time_format)
   end
 
+
+  def merge_record_changes(records) when is_list(records) do
+    records
+      |> Enum.map(&merge_record_change/1)
+  end
+
   # merge the data structures
   @doc"""
     Design Brief
@@ -102,6 +121,8 @@ defmodule Inventory.PriceTracker do
     case Repo.get_by(Product, external_product_id: external_product_id ) do
       nil ->
         create_product(record)
+      product ->
+        update_product(product, record)
     end
   end
 
@@ -115,11 +136,12 @@ defmodule Inventory.PriceTracker do
       |> Product.changeset(record)
       |> Repo.insert() do
         {:error, _changeset} ->
-          Logger.error "Failure to create product external_id: #{external_product_id}"
-          :error
+          msg = "Failure to create product external_id: #{external_product_id}"
+          Logger.error msg
+          {:error, msg}
         {:ok, product} ->
           Logger.info "Product created with id: #{product.id}"
-          :ok
+          {:ok, product}
       end
   end
 
@@ -144,7 +166,7 @@ defmodule Inventory.PriceTracker do
             |> Changeset.put_change(:price, price)
             |> Repo.update()
         do
-          {product, past_price_record}
+          product
         else
           {:error, _changeset } ->
             #TODO: expose the changeset error to the user
@@ -164,12 +186,15 @@ defmodule Inventory.PriceTracker do
       Do not update the price.
   """
   def update_product(%Product{ external_product_id: external_product_id, id: id  } = product, %{ external_product_id: external_product_id, product_name: product_name }) do
-    Logger.warn("product id:#{id} with external id: #{external_product_id} name does not match :: #{product.product_name} !== #{product_name}")
-    :error
+    msg = "product id:#{id} with external id: #{external_product_id} name does not match :: #{product.product_name} !== #{product_name}"
+    Logger.warn msg
+    { :error, msg}
   end
 
   def update_product(product, _) do
-    Logger.error("Unknown error updating product #{product.id}")
+    msg = "Unknown error updating product #{product.id}"
+    Logger.error msg
+    {:error, msg}
   end
 
 end
