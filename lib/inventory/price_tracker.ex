@@ -3,6 +3,11 @@ defmodule Inventory.PriceTracker do
   PriceTracker is the set of code that fetches data for products
   and merges or creates the records in the database
   """
+  import Logger
+  alias Inventory.Repo
+  alias Ecto.Changeset
+  alias Inventory.Schema.Product
+  alias Inventory.Schema.PastPriceRecord
 
   @time_format "{ISO:Extended}"
 
@@ -86,6 +91,85 @@ defmodule Inventory.PriceTracker do
   def format_time(timex_record) do
     timex_record
       |> Timex.format(@time_format)
+  end
+
+  # merge the data structures
+  @doc"""
+    Design Brief
+
+  """
+  def merge_record_change(%{ external_product_id: external_product_id, product_name: _product_name, price: _price } = record) do
+    case Repo.get_by(Product, external_product_id: external_product_id ) do
+      nil ->
+        create_product(record)
+    end
+  end
+
+  @doc"""
+    If there is not an existing product with a matching external_product_id and the product is not discontinued,
+    create a new product record for it.
+    Explicitly log that there is a new product and that you are creating a new product.
+  """
+  def create_product(%{ external_product_id: external_product_id, product_name: _product_name, price: _price } = record) do
+    case %Product{}
+      |> Product.changeset(record)
+      |> Repo.insert() do
+        {:error, _changeset} ->
+          Logger.error "Failure to create product external_id: #{external_product_id}"
+          :error
+        {:ok, product} ->
+          Logger.info "Product created with id: #{product.id}"
+          :ok
+      end
+  end
+
+  @doc"""
+  * If there's an existing product with an external_product_id that matches the id of a product in the response,
+    it has the same name and the price differs,
+    create a new past price record for the product.
+    Then update the product's price. Do this even if the item is discontinued.
+  """
+  def update_product(%Product{ external_product_id: external_product_id, product_name: product_name } = product, %{ external_product_id: external_product_id, product_name: product_name, price: price }) do
+    if product.price !== price do
+      percentage_change = (price - product.price) / price
+
+      Repo.transaction(fn ->
+        #insert a past price record
+        with { :ok, past_price_record } <- product
+            |> Ecto.build_assoc(:past_price_records)
+            |> PastPriceRecord.changeset(%{ percentage_change: percentage_change, price: product.price })
+            |> Repo.insert(),
+          { :ok, product } <- product
+            |> Product.changeset(%{})
+            |> Changeset.put_change(:price, price)
+            |> Repo.update()
+        do
+          {product, past_price_record}
+        else
+          {:error, _changeset } ->
+            #TODO: expose the changeset error to the user
+            Logger.error "an error upadting product #{product.id} occurred"
+            Repo.rollback(:product_update_error)
+          _ ->
+            Logger.error "an error upadting product #{product.id} occurred"
+            Repo.rollback(:product_update_error)
+        end
+      end)
+    end
+  end
+
+  @doc"""
+      * If there is an existing product record with a matching external_product_id, but a different product name,
+      log an error message that warns the team that there is a mismatch.
+      Do not update the price.
+  """
+  def update_product(%Product{ external_product_id: external_product_id, id: id  } = product, %{ external_product_id: external_product_id, product_name: product_name }) do
+    Logger.warn("product id:#{id} with external id: #{external_product_id} name does not match :: #{product.product_name} !== #{product_name}")
+    :error
+  end
+
+  def update_product(product, _) do
+    Logger.error("Unknown error updating product #{product.id}")
   end
 
 end

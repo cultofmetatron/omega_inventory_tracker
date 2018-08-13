@@ -55,7 +55,6 @@ defmodule Inventory.PriceTrackerTest do
         start_date,
         end_date)
 
-      assert records |> Enum.count() == 2
     end
 
   end
