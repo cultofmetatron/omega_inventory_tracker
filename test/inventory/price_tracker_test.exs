@@ -1,9 +1,12 @@
 defmodule Inventory.PriceTrackerTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   use ExVCR.Mock
 
   use InventoryWeb.ConnCase
   alias Inventory.PriceTracker
+  alias Inventory.Schema.Product
+  alias Inventory.Schema.PastPriceRecord
+  alias Inventory.Repo
 
   @date_format "{ISO:Extended}"
 
@@ -55,10 +58,58 @@ defmodule Inventory.PriceTrackerTest do
         start_date,
         end_date)
 
+      assert Enum.count(records) == 2
+
     end
 
   end
 
+  test "it should create new records" do
+    {:ok, start_date } = @date2 |> Timex.parse(@date_format)
+    {:ok, end_date } = @date1 |> Timex.parse(@date_format)
+    use_cassette "omega_cassettes", custom: true do
+      PriceTracker.update_products(
+        @url_endpoint,
+        @api_key,
+        start_date,
+        end_date
+      )
+      products = Product |> Repo.all
+      assert Enum.count(products) == 2
+    end
 
+  end
+
+  test "it should create a past price record if there is an existing data product" do
+    {:ok, start_date } = @date2 |> Timex.parse(@date_format)
+    {:ok, end_date } = @date1 |> Timex.parse(@date_format)
+    use_cassette "omega_cassettes", custom: true do
+      PriceTracker.update_products(
+        @url_endpoint,
+        @api_key,
+        start_date,
+        end_date
+      )
+      products = Product |> Repo.all
+      assert Enum.count(products) == 2
+      past_price_records = PastPriceRecord |> Repo.all
+      assert Enum.count(past_price_records) == 0
+
+      {:ok, start_date } = @date3 |> Timex.parse(@date_format)
+      {:ok, end_date } = @date2 |> Timex.parse(@date_format)
+      PriceTracker.update_products(
+        @url_endpoint,
+        @api_key,
+        start_date,
+        end_date
+      )
+      products = Product |> Repo.all
+      assert Enum.count(products) == 2
+      past_price_records = PastPriceRecord |> Repo.all
+      assert Enum.count(past_price_records) == 2
+
+    end
+
+  end
 
 end

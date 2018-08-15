@@ -10,5 +10,18 @@
       },
       "body": "{\r\n        \"productRecords\": [\r\n          {\r\n            \"id\": 123456,\r\n            \"name\": \"Nice Chair\",\r\n            \"price\": \"$30.25\",\r\n            \"category\": \"home-furnishings\",\r\n            \"discontinued\": false\r\n          },\r\n          {\r\n            \"id\": 234567,\r\n            \"name\": \"Black & White TV\",\r\n            \"price\": \"$43.77\",\r\n            \"category\": \"electronics\",\r\n            \"discontinued\": true\r\n          }\r\n        ]\r\n      }"
     }
+  },
+  {
+    "request": {
+      "url": "https://omegapricinginc.com/pricing/records.json?api_key=SF934-DKFJ3-S3CR3T-K3Y&end_date=2018-07-13T01%3A10%3A36.387155%2B00%3A00&start_date=2018-06-13T01%3A11%3A07.639609%2B00%3A00"
+    },
+    "response": {
+      "status_code": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\r\n\"productRecords\": [\r\n{\r\n\"id\": 123456,\r\n\"name\": \"Nice Chair\",\r\n\"price\": \"$32.25\",\r\n\"category\": \"home-furnishings\",\r\n\"discontinued\": false\r\n},\r\n{\r\n\"id\": 234567,\r\n\"name\": \"Black & White TV\",\r\n\"price\": \"$49.77\",\r\n\"category\": \"electronics\",\r\n\"discontinued\": true\r\n}\r\n]\r\n}"
+    }
   }
+
 ]

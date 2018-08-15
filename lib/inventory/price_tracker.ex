@@ -10,6 +10,7 @@ defmodule Inventory.PriceTracker do
   alias Inventory.Schema.PastPriceRecord
 
   @time_format "{ISO:Extended}"
+  require IEx
 
 
   @doc"""
@@ -18,8 +19,8 @@ defmodule Inventory.PriceTracker do
   def update_products(url, api_key, start_date, end_date) do
     case fetch_records(url, api_key, start_date, end_date) do
       {:error, msg} ->
-        Logger.error msg
-      products when is_list(products) ->
+        Logger.error "[PriceTracker.update_products] #{msg}"
+      {:ok, products} when is_list(products) ->
         merge_record_changes(products)
     end
   end
@@ -33,14 +34,18 @@ defmodule Inventory.PriceTracker do
 %HTTPotion.Response{body: body, status_code: 200}
   """
   def fetch_records(url, api_key, start_date, end_date) do
+    #IEx.pry
     with {:ok, start_date} <- format_time(start_date),
           {:ok, end_date} <- format_time(end_date),
           #{:ok, request_url} <- generate_get_string(url, api_key, start_date, end_date),
-          %HTTPotion.Response{body: body, status_code: 200}  <- HTTPotion.get(url, query: %{
-            api_key: api_key,
-            start_date: start_date,
-            end_date: end_date
-          }),
+          %HTTPotion.Response{body: body, status_code: 200}  <- (fn ->
+            #IEx.pry
+            HTTPotion.get(url, query: %{
+              api_key: api_key,
+              start_date: start_date,
+              end_date: end_date
+            })
+          end).(),
           {:ok, records} <- parse_body(body)
     do
       {:ok, records}
@@ -137,10 +142,10 @@ defmodule Inventory.PriceTracker do
       |> Repo.insert() do
         {:error, _changeset} ->
           msg = "Failure to create product external_id: #{external_product_id}"
-          Logger.error msg
+          Logger.error "[PriceTracker.createProduct]: #{msg}"
           {:error, msg}
         {:ok, product} ->
-          Logger.info "Product created with id: #{product.id}"
+          Logger.info "[PriceTracker.createProduct]: Product created with id: #{product.id}"
           {:ok, product}
       end
   end
@@ -170,10 +175,10 @@ defmodule Inventory.PriceTracker do
         else
           {:error, _changeset } ->
             #TODO: expose the changeset error to the user
-            Logger.error "an error upadting product #{product.id} occurred"
+            Logger.error "[PriceTracker.update_product]: an error upadting product #{product.id} occurred"
             Repo.rollback(:product_update_error)
           _ ->
-            Logger.error "an error upadting product #{product.id} occurred"
+            Logger.error "[PriceTracker.update_product]: an error upadting product #{product.id} occurred"
             Repo.rollback(:product_update_error)
         end
       end)
@@ -186,13 +191,13 @@ defmodule Inventory.PriceTracker do
       Do not update the price.
   """
   def update_product(%Product{ external_product_id: external_product_id, id: id  } = product, %{ external_product_id: external_product_id, product_name: product_name }) do
-    msg = "product id:#{id} with external id: #{external_product_id} name does not match :: #{product.product_name} !== #{product_name}"
+    msg = "[PriceTracker.update_product] product id:#{id} with external id: #{external_product_id} name does not match :: #{product.product_name} !== #{product_name}"
     Logger.warn msg
     { :error, msg}
   end
 
   def update_product(product, _) do
-    msg = "Unknown error updating product #{product.id}"
+    msg = "[PriceTracker.update_product]: Unknown error updating product #{product.id}"
     Logger.error msg
     {:error, msg}
   end
