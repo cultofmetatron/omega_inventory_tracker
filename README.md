@@ -1,5 +1,7 @@
 # Inventory
 
+An example set of code for an omega pricing api 
+
 Task
 Create an application that will track pricing information for products. Product price information will be fetched from an external API, "Omega Pricing Inc." a fictitious company and API, and stored in your application.
 
